@@ -1,9 +1,9 @@
 # Security Policy
 
-I take the security of these projects — and the confidentiality of any data they touch — seriously, and I welcome coordinated disclosure.
+I take the security of these projects, and the confidentiality of any data they touch, seriously, and I welcome coordinated disclosure.
 
 ## Reporting a vulnerability
-Please report privately — **do not open a public issue**:
+Please report privately, **do not open a public issue**:
 - Use GitHub **Private vulnerability reporting** on the affected repository (Security → Report a vulnerability), or
 - Email **security@mhsbsolutions.com**.
 
