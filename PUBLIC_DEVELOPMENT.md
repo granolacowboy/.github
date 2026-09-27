@@ -30,3 +30,10 @@ Raw agent transcripts are not durable project documentation and should not be co
 ## Merge history
 
 Curated public repositories should use squash merges with a concise pull request title as the canonical public change record. Intermediate agent/worktree commits are implementation detail; the resulting `main` history should remain readable without knowledge of the agent runtime.
+
+Repository configuration target:
+
+- squash merge only; disable merge commits and rebase merges;
+- use the pull request title as the squash commit title;
+- leave the squash commit message/body blank rather than copying branch commit messages;
+- require `public-history-hygiene` before merge once the check is available for the repository.
