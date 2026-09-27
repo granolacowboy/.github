@@ -1,6 +1,8 @@
 name: Public history hygiene
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
   workflow_call:
 
 permissions:
@@ -25,6 +27,7 @@ jobs:
           import re
           import sys
           import urllib.request
+          import urllib.error
 
           with open(os.environ["GH_EVENT_PATH"], "r", encoding="utf-8") as handle:
               event = json.load(handle)
@@ -37,26 +40,26 @@ jobs:
           patterns = [
               (
                   re.compile(
-                      r"(?im)^\s*(?:claude|codex|chatgpt|gemini|opencode|kilo)"
-                      r"[-_ ]session\s*:"
+                      r"(?im)^\\s*(?:claude|codex|chatgpt|gemini|opencode|kilo)"
+                      r"[-_ ]session\\s*:"
                   ),
                   "agent session trailer",
               ),
               (
-                  re.compile(r"(?i)https?://claude\.ai/code/session_"),
+                  re.compile(r"(?i)https?://claude\\.ai/code/session_"),
                   "agent session URL",
               ),
               (
                   re.compile(
-                      r"(?im)^\s*co-authored-by:\s*"
-                      r"(?:claude|codex|chatgpt|gemini|opencode|kilo)\b"
+                      r"(?im)^\\s*co-authored-by:\\s*"
+                      r"(?:claude|codex|chatgpt|gemini|opencode|kilo)\\b"
                   ),
                   "AI co-author trailer",
               ),
               (
                   re.compile(
-                      r"(?i)(?:🤖\s*)?generated\s+(?:with|by)\s+"
-                      r"\[?(?:claude|codex|chatgpt|gemini|opencode|kilo)\b"
+                      r"(?i)(?:🤖\\s*)?generated\\s+(?:with|by)\\s+"
+                      r"\\[?(?:claude|codex|chatgpt|gemini|opencode|kilo)\\b"
                   ),
                   "generated-by attribution",
               ),
@@ -68,7 +71,10 @@ jobs:
           ]
 
           repo = os.environ["GH_REPOSITORY"]
-          number = pr["number"]
+          number = event.get("number")
+          if not number:
+              print("::error title=Public history hygiene::Pull request number is missing.")
+              sys.exit(1)
           token = os.environ["GH_TOKEN"]
 
           page = 1
@@ -86,8 +92,15 @@ jobs:
                       "User-Agent": "public-history-hygiene",
                   },
               )
-              with urllib.request.urlopen(request) as response:
-                  commits = json.load(response)
+              try:
+                  with urllib.request.urlopen(request) as response:
+                      commits = json.load(response)
+              except urllib.error.HTTPError as exc:
+                  print(
+                      f"::error title=Public history hygiene::"
+                      f"Could not inspect PR commits (GitHub API HTTP {exc.code})."
+                  )
+                  sys.exit(1)
 
               for commit in commits:
                   sha = commit.get("sha", "")[:12]
@@ -99,9 +112,9 @@ jobs:
               page += 1
 
           failures = []
-          for surface_name, text in surfaces:
+          for surface_name, surface_text in surfaces:
               for pattern, label in patterns:
-                  if pattern.search(text):
+                  if pattern.search(surface_text):
                       failures.append((surface_name, label))
 
           if failures:
@@ -116,10 +129,6 @@ jobs:
                       f"{surface_name} contains {label}. "
                       "Keep engineering rationale; remove agent/session provenance."
                   )
-              print(
-                  "\nPublic Git history records engineering changes, not agent execution "
-                  "telemetry. See granolacowboy/.github PUBLIC_DEVELOPMENT.md."
-              )
               sys.exit(1)
 
           print(
